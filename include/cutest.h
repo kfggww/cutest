@@ -117,6 +117,9 @@ extern test_case *__cutest_current_test_case__;
 #define CUT_EXPECT_GT(a, b) CUT_EXPECT_TRUE((a) > (b))
 #define CUT_EXPECT_GE(a, b) CUT_EXPECT_TRUE((a) >= (b))
 
+#define CUT_SUCCESS() return
+#define CUT_FAIL() CUT_EXPECT_TRUE(0)
+
 void cutest_run_all();
 
 #endif

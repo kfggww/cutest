@@ -34,7 +34,7 @@ static void __cutest_show_test_results() {
                suit->test_case_passed, suit->test_case_total);
         test_case *test_case = suit->test_case_list;
         while (test_case) {
-            printf("\t\t[%s] case result: %s\n", test_case->test_name,
+            printf("\t[%s] case result: %s\n", test_case->test_name,
                    test_case->test_result == CUTEST_PASS ? "Pass" : "Fail");
             test_case = test_case->test_case_next;
         }
