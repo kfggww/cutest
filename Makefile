@@ -1,29 +1,63 @@
-CFLAGS := -I include
 
-build_dir := build
+BUILD_SHARED := yes
+DEBUG := yes
 
-lib_cutest_srcs := $(wildcard src/*.c)
-lib_cutest := $(build_dir)/libcutest.so
+SRC_DIR := src
+TEST_SRC_DIR := test
+BUILD_DIR := build
 
-$(lib_cutest): CFLAGS +=  --shared -fPIC
+SRCS := $(shell find $(SRC_DIR) -name *.c)
+TEST_SRCS := $(shell find $(TEST_SRC_DIR) -name *.c)
 
-cutest_test_srcs := $(wildcard test/*.c)
-cutest_test_exes := $(addprefix $(build_dir)/, $(patsubst %.c, %, $(cutest_test_srcs)))
+SRC_OBJS := $(addprefix $(BUILD_DIR)/, $(patsubst %.c, %.o, $(SRCS)))
+TEST_SRC_OBJS := $(addprefix $(BUILD_DIR)/, $(patsubst %.c, %.o, $(TEST_SRCS)))
 
-all: $(lib_cutest) $(cutest_test_exes)
+COMMON_INC := include
+CUTEST_INC := $(COMMON_INC) $(shell find $(SRC_DIR) -type d)
+TEST_INC := $(COMMON_INC) $(shell find $(TEST_SRC_DIR) -type d)
 
-create_build_dir:
-	mkdir -p $(build_dir)/test
+CFLAGS :=
+ifeq ($(DEBUG), yes)
+	CFLAGS += -g
+endif
 
-$(lib_cutest): $(lib_cutest_srcs) create_build_dir
-	$(CC) $(CFLAGS) -o $@ $(lib_cutest_srcs)
+TEST_TARGETS := $(patsubst %.o, %, $(TEST_SRC_OBJS))
 
-$(cutest_test_exes): $(libcutest)
+ifeq ($(BUILD_SHARED), yes)
+CUTEST_TARGET := $(BUILD_DIR)/$(SRC_DIR)/libcutest.so
+else
+CUTEST_TARGET := $(BUILD_DIR)/$(SRC_DIR)/libcutest.a
+endif
 
-$(build_dir)/test/%: test/%.c
-	$(CC) $(CFLAGS) -L $(build_dir) -lcutest $< -o $@
+$(SRC_OBJS): CFLAGS += $(addprefix -I, $(CUTEST_INC))
+$(TEST_SRC_OBJS): CFLAGS += $(addprefix -I, $(TEST_INC))
+
+ifeq ($(BUILD_SHARED), yes)
+$(CUTEST_TARGET): CFLAGS += -shared
+$(SRC_OBJS): CFLAGS += -fPIC
+endif
+
+$(TEST_TARGETS): CFLAGS += -L$(dir $(CUTEST_TARGET)) -lcutest
+
+all: cutest tests
+
+cutest: $(CUTEST_TARGET)
+
+tests: $(TEST_TARGETS)
 
 clean:
-	rm -rf $(lib_cutest) $(cutest_test_exes)
+	rm -rf $(CUTEST_TARGET) $(TEST_TARGETS) $(SRC_OBJS) $(TEST_SRC_OBJS)
 
-.PHONY: all clean create_build_dir
+.PHONY: all clean cutest tests
+
+$(CUTEST_TARGET): $(SRC_OBJS)
+	$(CC) $(CFLAGS) -o $@ $(SRC_OBJS)
+
+$(TEST_TARGETS): $(TEST_SRC_OBJS)
+
+$(BUILD_DIR)/%.o: %.c
+	mkdir -p $(dir $@)
+	$(CC) -c $(CFLAGS) -o $@ $<
+
+%: %.o
+	$(CC) $(CFLAGS) -o $@ $<
