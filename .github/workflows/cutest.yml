@@ -7,13 +7,11 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build:
-
+  build-and-test:
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v3
-    - name: make
+    - name: build
       run: make
     - name: run-test
       run: cd build; export LD_LIBRARY_PATH=$(realpath $(pwd)/src); cd test; ./test1
