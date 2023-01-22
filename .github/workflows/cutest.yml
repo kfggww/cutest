@@ -14,4 +14,4 @@ jobs:
     - name: build
       run: make install
     - name: run-test
-      run: LD_LIBRARY_PATH=$(realpath build/install/lib) ./build/test/test1
+      run: cd build; export LD_LIBRARY_PATH=$(pwd)/src; ./test/test1
