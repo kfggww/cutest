@@ -12,6 +12,6 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: build
-      run: make
+      run: make install
     - name: run-test
-      run: cd build; export LD_LIBRARY_PATH=$(realpath $(pwd)/src); cd test; ./test1
+      run: LD_LIBRARY_PATH=$(realpath build/install/lib) ./build/test/test1
