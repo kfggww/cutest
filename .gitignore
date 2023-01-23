@@ -56,3 +56,4 @@ dkms.conf
 
 # Build output
 build
+install

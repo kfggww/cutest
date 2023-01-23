@@ -5,7 +5,7 @@ DEBUG := yes
 SRC_DIR := src
 TEST_SRC_DIR := test
 BUILD_DIR := build
-INSTALL_PREFIX := $(BUILD_DIR)/install
+INSTALL_DIR := install
 
 SRCS := $(shell find $(SRC_DIR) -name *.c)
 TEST_SRCS := $(shell find $(TEST_SRC_DIR) -name *.c)
@@ -50,9 +50,9 @@ cutest: $(CUTEST_TARGET)
 tests: $(TEST_TARGETS)
 
 install: all
-	mkdir -p $(INSTALL_PREFIX)/{lib,include}
-	cp $(COMMON_INC)/*.h $(INSTALL_PREFIX)/include
-	cp $(CUTEST_TARGET) $(INSTALL_PREFIX)/lib
+	mkdir -p $(INSTALL_DIR)/{lib,include}
+	cp $(COMMON_INC)/*.h $(INSTALL_DIR)/include
+	cp $(CUTEST_TARGET) $(INSTALL_DIR)/lib
 
 clean:
 	rm -rf $(CUTEST_TARGET) $(TEST_TARGETS) $(SRC_OBJS) $(TEST_SRC_OBJS) $(DEPS)
