@@ -57,7 +57,7 @@ extern test_case *__cutest_current_test_case__;
 
 /*macros used by test case*/
 #define __CUTEST_CASE_FUNC_NAME(suit_name, case_name)                          \
-    __cutest_func##suit_name##_##case_name
+    __cutest_func_##suit_name##_##case_name
 
 #define __CUTEST_CASE_FUNC(suit_name, case_name)                               \
     void __CUTEST_CASE_FUNC_NAME(suit_name, case_name)()
