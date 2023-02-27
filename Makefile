@@ -3,6 +3,7 @@ BUILD_SHARED := yes
 DEBUG := yes
 
 Q := @
+SHELL := /bin/bash
 
 SRC_DIR := src
 TEST_SRC_DIR := test
