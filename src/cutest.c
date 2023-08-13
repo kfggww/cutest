@@ -125,10 +125,13 @@ static void cutest_run_one_suite(struct test_suite *suite)
 
 static void cutest_save_results()
 {
+    if (result_outformat == NULL) {
+        printf("Output file format NOT set\n");
+        return;
+    }
+
     if (strcmp(result_outformat, "json") == 0) {
         json_print_registry(&cutest_registry);
-    } else if (result_outformat == NULL) {
-        printf("Output file format NOT set\n");
     } else {
         printf("Output file format NOT supported: %s\n", result_outformat);
     }

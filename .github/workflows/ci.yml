@@ -1,0 +1,17 @@
+name: ubuntu-22.04
+run-name: cutest-ci
+on:
+  push:
+    branches:
+      - main
+      - dev
+jobs:
+  build-and-run:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: checkout cutest
+        uses: actions/checkout@v3
+      - name: build cutest
+        run: make
+      - name: run cutest
+        run: ./build/test/example
