@@ -1,39 +1,10 @@
-#include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "cutest.h"
-
-#define HELP_INFO                                               \
-    "Usage of cutest:\n"                                        \
-    "/path/to/test_executable [--help]\n"                       \
-    "                         [--filter_suite suite_pattern]\n" \
-    "                         [--filter_case case_pattern]\n"
-
-/* Options that cutest accepts */
-enum cutest_option_value {
-    EMPTY_OPTION = -1,
-    FILTER_SUITE_OPTION = 1,
-    FILTER_CASE_OPTION,
-    HELP_OPTION,
-};
-
-#define LONG_OPTION(opt_name, value)                                \
-    {                                                               \
-        .name = opt_name, .has_arg = 0, .flag = NULL, .val = value, \
-    }
-
-#define LONG_ARG_OPTION(opt_name, value)                            \
-    {                                                               \
-        .name = opt_name, .has_arg = 1, .flag = NULL, .val = value, \
-    }
-
-static struct option init_options[] = {
-    LONG_ARG_OPTION("filter_suite", FILTER_SUITE_OPTION),
-    LONG_ARG_OPTION("filter_case", FILTER_CASE_OPTION),
-    LONG_OPTION("help", HELP_OPTION),
-};
+#include "formatter.h"
+#include "option.h"
 
 struct test_registry cutest_registry = {
     .total = 0,
@@ -45,9 +16,6 @@ struct test_registry cutest_registry = {
 
 static struct test_suite *current_suite;
 static struct test_case *current_case;
-
-static char *cutest_suite_pattern = NULL;
-static char *cutest_case_pattern = NULL;
 
 static int cutest_pattern_match(const char *s, const char *pattern)
 {
@@ -82,58 +50,69 @@ static int cutest_pattern_match(const char *s, const char *pattern)
     return 1;
 }
 
-static int cutest_filter_suite(struct test_suite *psuite)
+static int cutest_filter(const char *name, const char *filter_pattern,
+                         const char *filterout_pattern)
 {
-    if (psuite == NULL)
-        return 0;
-    if (cutest_suite_pattern == NULL)
-        return 1;
-    return cutest_pattern_match(psuite->name, cutest_suite_pattern);
+    if (filter_pattern != NULL) {
+        return cutest_pattern_match(name, filter_pattern);
+    } else if (filterout_pattern != NULL) {
+        return !cutest_pattern_match(name, filterout_pattern);
+    }
+
+    return 1;
 }
 
-static int cutest_filter_case(struct test_case *pcase)
+static inline int cutest_filter_suite(struct test_suite *suite)
 {
-    if (pcase == NULL)
-        return 0;
-    if (cutest_case_pattern == NULL)
-        return 1;
-    return cutest_pattern_match(pcase->name, cutest_case_pattern);
+    return cutest_filter(suite->name, suite_filter_pattern,
+                         suite_filterout_pattern);
 }
 
-static void cutest_run_one_case(struct test_case *pcase)
+static inline int cutest_filter_case(struct test_case *caze)
 {
-    if (cutest_filter_case(pcase) == 0) {
-        pcase->suite->ignore++;
+    return cutest_filter(caze->name, case_filter_pattern,
+                         case_filterout_pattern);
+}
+
+static void cutest_run_one_case(struct test_case *caze)
+{
+    if (cutest_filter_case(caze) == 0) {
+        caze->suite->ignore++;
         return;
     }
 
-    printf("[RUN...]: %s::%s\n", pcase->suite->name, pcase->name);
+    printf("[RUN...]: %s::%s\n", caze->suite->name, caze->name);
 
-    if (pcase->suite->init != NULL)
-        pcase->suite->init();
+    if (caze->suite->init != NULL)
+        caze->suite->init();
 
-    pcase->test_fn();
+    caze->result = caze->test_fn();
 
-    if (pcase->suite->cleanup != NULL)
-        pcase->suite->cleanup();
+    if (caze->suite->cleanup != NULL)
+        caze->suite->cleanup();
 
-    printf("[...%s]: %s::%s\n", pcase->result == TEST_PASS ? "OK" : "FAIL",
-           pcase->suite->name, pcase->name);
+    printf("[...%s]: %s::%s\n",
+           caze->result == TEST_PASS ?
+               "OK" :
+               (caze->result == TEST_FAIL ? "FAIL" : "IGNORE"),
+           caze->suite->name, caze->name);
 
-    if (pcase->result == TEST_PASS)
-        pcase->suite->pass++;
+    if (caze->result == TEST_PASS)
+        caze->suite->pass++;
+    else if (caze->result == TEST_FAIL)
+        caze->suite->fail++;
     else
-        pcase->suite->fail++;
+        caze->suite->ignore++;
 }
 
-static void cutest_run_one_suite(struct test_suite *psuite)
+static void cutest_run_one_suite(struct test_suite *suite)
 {
-    if (cutest_filter_suite(psuite) == 0) {
-        psuite->ignore = psuite->total;
+    if (cutest_filter_suite(suite) == 0) {
+        suite->ignore = suite->total;
         return;
     }
 
-    current_case = psuite->first_case;
+    current_case = suite->first_case;
     struct test_case *start_case = current_case;
 
     if (current_case != NULL) {
@@ -144,41 +123,32 @@ static void cutest_run_one_suite(struct test_suite *psuite)
     }
 }
 
-static void cutest_report_suite(struct test_suite *psuite)
+static void cutest_save_results()
 {
-    printf("[SUITE RESULT: %s]: ", psuite->name);
-    printf("pass=%d/%d, fail=%d/%d, ignore=%d/%d\n\n", psuite->pass,
-           psuite->total, psuite->fail, psuite->total, psuite->ignore,
-           psuite->total);
+    if (strcmp(result_outformat, "json") == 0) {
+        json_print_registry(&cutest_registry);
+    } else if (result_outformat == NULL) {
+        printf("Output file format NOT set\n");
+    } else {
+        printf("Output file format NOT supported: %s\n", result_outformat);
+    }
 }
 
-static void cutest_report_all()
+static inline void cutest_report_suite(struct test_suite *suite)
+{
+    printf("[SUITE RESULT: %s]: ", suite->name);
+    printf("pass=%d/%d, fail=%d/%d, ignore=%d/%d\n\n", suite->pass,
+           suite->total, suite->fail, suite->total, suite->ignore,
+           suite->total);
+}
+
+static inline void cutest_report_all()
 {
     printf("[ALL RESULT]: pass=%d/%d, fail=%d/%d, ignore=%d/%d\n",
            cutest_registry.pass, cutest_registry.total, cutest_registry.fail,
            cutest_registry.total, cutest_registry.ignore,
            cutest_registry.total);
-}
-
-void cutest_init(int argc, char *argv[])
-{
-    int index = -1;
-    int ret = 0;
-    while ((ret = getopt_long(argc, argv, "", init_options, &index)) > 0) {
-        switch (ret) {
-        case FILTER_SUITE_OPTION:
-            cutest_suite_pattern = optarg;
-            break;
-        case FILTER_CASE_OPTION:
-            cutest_case_pattern = optarg;
-            break;
-        default:
-            printf("error use of cutest\n");
-        case HELP_OPTION:
-            printf(HELP_INFO);
-            exit(0);
-        }
-    }
+    cutest_save_results();
 }
 
 void cutest_run_all()

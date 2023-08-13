@@ -2,59 +2,14 @@
 #define CUTEST_H
 #include <stddef.h>
 
-/* Basic data structures */
-
-enum test_result {
-    TEST_PASS,
-    TEST_FAIL,
-    TEST_IGNORE,
-};
-
-typedef void (*test_func)(void);
-
-struct test_suite;
-
-struct test_case {
-    const char *name;
-    test_func test_fn;
-    enum test_result result;
-
-    struct test_suite *suite;
-    struct test_case *next;
-    struct test_case *prev;
-};
-
-struct test_suite {
-    const char *name;
-
-    int total;
-    int pass;
-    int fail;
-    int ignore;
-
-    void (*init)(void);
-    void (*cleanup)(void);
-
-    struct test_suite *next;
-    struct test_suite *prev;
-    struct test_case *first_case;
-};
-
-struct test_registry {
-    int total;
-    int pass;
-    int fail;
-    int ignore;
-
-    struct test_suite *first_suite;
-};
+#include "cutest-internal.h"
 
 #define __init __attribute__((constructor))
 
 /* Macros for test_suite */
 
 #define __REGISTER_TEST_SUITE(suite_name)                           \
-    static void __init __register_suite_##suite(void)               \
+    static void __init __register_suite_##suite_name(void)          \
     {                                                               \
         extern struct test_registry cutest_registry;                \
         struct test_suite *psuite = &__TEST_SUITE_NAME(suite_name); \
@@ -94,7 +49,7 @@ struct test_registry {
 /* Macros for test_case */
 
 #define __DEFINE_TEST_CASE_FUNC(suite_name, test_name) \
-    static void __TEST_CASE_FUNC_NAME(suite_name, test_name)(void)
+    static enum test_result __TEST_CASE_FUNC_NAME(suite_name, test_name)(void)
 
 #define __REGISTER_TEST_CASE(suite_name, test_name)                          \
     static void __init __register_test_case_##suite_name##_##test_name(void) \
@@ -133,7 +88,8 @@ struct test_registry {
     __cutest_case_fn_##suite_name##_##test_name
 
 #define __DEFINE_TEST_CASE(suite_name, test_name)                     \
-    static void __TEST_CASE_FUNC_NAME(suite_name, test_name)(void);   \
+    static enum test_result __TEST_CASE_FUNC_NAME(suite_name,         \
+                                                  test_name)(void);   \
     static struct test_case __TEST_CASE_NAME(suite_name, test_name) = \
         __TEST_CASE_INITIALIZER(suite_name, test_name);
 
