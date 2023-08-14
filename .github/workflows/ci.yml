@@ -13,5 +13,7 @@ jobs:
         uses: actions/checkout@v3
       - name: build cutest
         run: make
-      - name: run cutest
-        run: ./build/test/example
+      - name: run example
+        run: make run_example
+      - name: build deb package
+        run: make deb-pkg

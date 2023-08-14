@@ -12,7 +12,7 @@
     "                         [--filterout_suite suite_filterout_pattern]\n" \
     "                         [--filter_case case_pattern]\n"                \
     "                         [--filterout_case case_filterout_pattern]\n"   \
-    "                         [--outformat json|xml]\n"                      \
+    "                         [--outformat json|xml(not supported yet)]\n"   \
     "                         [--outfile result_file_name]\n"
 
 /* Options that cutest accepts */

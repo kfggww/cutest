@@ -1,4 +1,6 @@
 PROJECT := cutest
+VERSION := 0.1
+ARCH ?= amd64
 
 pwd := $(PWD)
 build_dir := $(pwd)/build
@@ -32,12 +34,15 @@ $(build_dir)/%.o: %.c
 	$(CC) $(CFLAGS) -MM -MT $@ $< > $(@:%.o=%.d)
 	$(CC) -c $(CFLAGS) -o $@ $<
 
-test: $(example)
+run_example: $(example)
 	$(example)
+
+deb-pkg: $(libcutest)
+	package=$(PROJECT) version=$(VERSION) arch=$(ARCH) build=$(build_dir) src=$(pwd) scripts/mkdebian
 
 clean:
 	rm -rf $(objs) $(deps) $(libcutest) $(example-objs) $(example)
 
-.PHONY: all test clean
+.PHONY: all run_example clean
 
 -include $(deps)

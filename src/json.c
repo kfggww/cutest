@@ -56,7 +56,7 @@ void json_print_registry(const struct test_registry *registry)
             json_print_suite(suite);
             indent_level--;
             fprintf(json_fout, "%s",
-                    suite != registry->first_suite ? ",\n" : "\n");
+                    suite->next != registry->first_suite ? ",\n" : "\n");
             suite = suite->next;
         } while (suite != registry->first_suite);
         indent_level--;
@@ -101,12 +101,11 @@ void json_print_suite(const struct test_suite *suite)
         indent_level++;
         fprintf(json_fout, "\n");
         struct test_case *caze = suite->first_case;
-        int rest = suite->total;
         do {
             indent_level++;
             json_print_case(caze);
-            rest--;
-            fprintf(json_fout, "%s", rest > 0 ? ",\n" : "\n");
+            fprintf(json_fout, "%s",
+                    caze->next != suite->first_case ? ",\n" : "\n");
             indent_level--;
             caze = caze->next;
         } while (caze != suite->first_case);
