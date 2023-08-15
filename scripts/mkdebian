@@ -1,0 +1,38 @@
+#!/bin/bash
+
+pushd $build
+deb_package_dir=${package}_${version}_${arch}
+
+mkdir -p $deb_package_dir
+mkdir -p $deb_package_dir/DEBIAN
+mkdir -p $deb_package_dir/usr/lib/cutest
+mkdir -p $deb_package_dir/usr/include/cutest
+mkdir -p $deb_package_dir/etc/ld.so.conf.d
+
+cat <<EOF >$deb_package_dir/DEBIAN/control
+Package: $package
+Version: $version
+Architecture: $arch
+Maintainer: junan <kfggww@outlook.com>
+Description: A simple unit test framework for c programming language.
+
+EOF
+
+cat <<EOF >$deb_package_dir/DEBIAN/postinst
+#!/bin/sh
+ldconfig
+EOF
+
+chmod +x $deb_package_dir/DEBIAN/postinst
+cp $deb_package_dir/DEBIAN/postinst $deb_package_dir/DEBIAN/postrm
+
+cat <<EOF >$deb_package_dir/etc/ld.so.conf.d/cutest.conf
+/usr/lib/cutest
+EOF
+
+cp src/libcutest.so $deb_package_dir/usr/lib/cutest
+cp $src/include/*.h $deb_package_dir/usr/include/cutest
+
+dpkg-deb --build --root-owner-group $deb_package_dir
+
+popd

@@ -54,6 +54,6 @@ dkms.conf
 # Editors
 .vscode
 
-# Build output
-build
-install
+# Build
+build/
+Documentation/

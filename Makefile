@@ -1,78 +1,48 @@
+PROJECT := cutest
+VERSION := 0.1
+ARCH ?= amd64
 
-BUILD_SHARED := yes
-DEBUG := yes
+pwd := $(PWD)
+build_dir := $(pwd)/build
 
-Q := @
-SHELL := /bin/bash
+CC := gcc
 
-SRC_DIR := src
-TEST_SRC_DIR := test
-BUILD_DIR := build
-INSTALL_DIR := install
+objs := src/cutest.o \
+		src/json.o \
+		src/option.o
+objs := $(objs:%.o=$(build_dir)/%.o)
+deps := $(objs:%.o=%.d)
+libcutest = $(build_dir)/src/libcutest.so
+example-objs := test/example.o
+example-objs := $(example-objs:%.o=$(build_dir)/%.o)
+example := $(build_dir)/test/example
 
-SRCS := $(shell find $(SRC_DIR) -name *.c)
-TEST_SRCS := $(shell find $(TEST_SRC_DIR) -name *.c)
+CFLAGS := -Iinclude
+$(objs): CFLAGS += -Isrc -fPIC
+MAKEFLAGS += -rR
 
-SRC_OBJS := $(addprefix $(BUILD_DIR)/, $(patsubst %.c, %.o, $(SRCS)))
-TEST_SRC_OBJS := $(addprefix $(BUILD_DIR)/, $(patsubst %.c, %.o, $(TEST_SRCS)))
+all: $(libcutest) $(example)
 
-COMMON_INC := include
-CUTEST_INC := $(COMMON_INC) $(shell find $(SRC_DIR) -type d)
-TEST_INC := $(COMMON_INC) $(shell find $(TEST_SRC_DIR) -type d)
+$(libcutest): $(objs)
+	$(CC) $(CFLAGS) -shared -o $@ $^
 
-CFLAGS :=
-ifeq ($(DEBUG), yes)
-	CFLAGS += -g
-endif
+$(example): $(example-objs) $(libcutest)
+	$(CC) $(example-objs) -L$(build_dir)/src -lcutest -Wl,-rpath=$(build_dir)/src -o $(example)
 
-DEPFLAGS := -MM
-DEPS := $(BUILD_DIR)/.deps
+$(build_dir)/%.o: %.c
+	mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -MM -MT $@ $< > $(@:%.o=%.d)
+	$(CC) -c $(CFLAGS) -o $@ $<
 
-TEST_TARGETS := $(patsubst %.o, %, $(TEST_SRC_OBJS))
+run_example: $(example)
+	$(example)
 
-ifeq ($(BUILD_SHARED), yes)
-CUTEST_TARGET := $(BUILD_DIR)/$(SRC_DIR)/libcutest.so
-else
-CUTEST_TARGET := $(BUILD_DIR)/$(SRC_DIR)/libcutest.a
-endif
-
-$(SRC_OBJS): CFLAGS += $(addprefix -I, $(CUTEST_INC))
-$(TEST_SRC_OBJS): CFLAGS += $(addprefix -I, $(TEST_INC))
-
-ifeq ($(BUILD_SHARED), yes)
-$(CUTEST_TARGET): CFLAGS += -shared
-$(SRC_OBJS): CFLAGS += -fPIC
-endif
-
-$(TEST_TARGETS): CFLAGS += -L$(dir $(CUTEST_TARGET)) -lcutest
-
-all: cutest tests
-
-cutest: $(CUTEST_TARGET)
-
-tests: $(TEST_TARGETS)
-
-install: all
-	$(Q)mkdir -p $(INSTALL_DIR)/{lib,include}
-	$(Q)cp $(COMMON_INC)/*.h $(INSTALL_DIR)/include
-	$(Q)cp $(CUTEST_TARGET) $(INSTALL_DIR)/lib
+deb-pkg: $(libcutest)
+	package=$(PROJECT) version=$(VERSION) arch=$(ARCH) build=$(build_dir) src=$(pwd) scripts/mkdebian
 
 clean:
-	$(Q)rm -rf $(CUTEST_TARGET) $(TEST_TARGETS) $(SRC_OBJS) $(TEST_SRC_OBJS) $(DEPS)
+	rm -rf $(objs) $(deps) $(libcutest) $(example-objs) $(example)
 
-.PHONY: all clean cutest tests install
+.PHONY: all run_example clean
 
-$(CUTEST_TARGET): $(SRC_OBJS)
-	$(Q)$(CC) $(CFLAGS) -o $@ $(SRC_OBJS)
-
-$(TEST_TARGETS): $(TEST_SRC_OBJS)
-
-$(BUILD_DIR)/%.o: %.c
-	$(Q)mkdir -p $(dir $@)
-	$(Q)$(CC) -c $(CFLAGS) $(DEPFLAGS) -MT $@ $< >> $(BUILD_DIR)/.deps
-	$(Q)$(CC) -c $(CFLAGS) -o $@ $<
-
-%: %.o
-	$(Q)$(CC) $(CFLAGS) -o $@ $<
-
--include $(BUILD_DIR)/.deps
+-include $(deps)
