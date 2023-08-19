@@ -1,9 +1,8 @@
 PROJECT := cutest
 VERSION := 0.1
-ARCH ?= amd64
 
-pwd := $(PWD)
-build_dir := $(pwd)/build
+build_dir := build
+install_prefix ?= /usr
 
 CC := gcc
 
@@ -37,12 +36,19 @@ $(build_dir)/%.o: %.c
 run_example: $(example)
 	$(example)
 
-deb-pkg: $(libcutest)
-	package=$(PROJECT) version=$(VERSION) arch=$(ARCH) build=$(build_dir) src=$(pwd) scripts/mkdebian
+doc: all
+	rm -rf Documentation
+	doxygen Doxyfile
+
+install: all doc
+	install -D -m=0644 -t $(DESTDIR)/$(install_prefix)/include/cutest include/*.h
+	install -D -m=0755 -t $(DESTDIR)/$(install_prefix)/lib/cutest $(libcutest)
+	mkdir -p $(DESTDIR)/$(install_prefix)/share/doc/cutest
+	cp -r Documentation/html $(DESTDIR)/$(install_prefix)/share/doc/cutest
 
 clean:
-	rm -rf $(objs) $(deps) $(libcutest) $(example-objs) $(example)
+	rm -rf $(objs) $(deps) $(libcutest) $(example-objs) $(example) Documentation build
 
-.PHONY: all run_example clean
+.PHONY: all run_example doc install clean
 
 -include $(deps)

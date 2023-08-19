@@ -77,6 +77,7 @@ static inline int cutest_filter_case(struct test_case *caze)
 static void cutest_run_one_case(struct test_case *caze)
 {
     if (cutest_filter_case(caze) == 0) {
+        caze->result = TEST_IGNORE;
         caze->suite->ignore++;
         return;
     }
@@ -105,9 +106,22 @@ static void cutest_run_one_case(struct test_case *caze)
         caze->suite->ignore++;
 }
 
+static void cutest_ignore_suite(struct test_suite *suite)
+{
+    struct test_case *caze = suite->first_case;
+    if (caze == NULL)
+        return;
+
+    do {
+        caze->result = TEST_IGNORE;
+        caze = caze->next;
+    } while (caze != suite->first_case);
+}
+
 static void cutest_run_one_suite(struct test_suite *suite)
 {
     if (cutest_filter_suite(suite) == 0) {
+        cutest_ignore_suite(suite);
         suite->ignore = suite->total;
         return;
     }
