@@ -15,5 +15,3 @@ jobs:
         run: make
       - name: run example
         run: make run_example
-      - name: build deb package
-        run: make deb-pkg
